@@ -31,9 +31,21 @@ Build output is in `dist/`. CI checks tests, lint, and the production build, the
 
 ## Embedding contract
 
-A future fxcontrol integration can place the contents of `dist/` into a dedicated embedded asset directory and serve the UI at `/`, alongside `/v1` APIs. No Node runtime is required in production. This change does not modify the sibling fxcontrol repository or copy files into it.
+The controller embeds `ui/dist` and serves it at `/`, alongside `/v1` APIs and `/swagger`. No Node runtime is required in production. To update a sibling controller checkout:
 
-Pin the UI revision/artifact used by the controller release for reproducibility. Serve hashed assets with immutable caching and revalidate `index.html`. Keep API errors and missing assets as actual errors rather than falling back to HTML. There are no client-side routes yet; choose hash routing or explicit SPA fallback when routes are introduced.
+```sh
+make sync-server-ui
+cd ../fxcontrol
+go test ./...
+make lint-new
+go run . start --listen :3090
+```
+
+Open `http://localhost:3090`. The sync target builds first, then replaces only `ui/dist`; `ui/assets.go` is preserved. For another checkout, use `make sync-server-ui SERVER_UI_DIR=/path/to/fxcontrol/ui`. The destination must already contain `assets.go`.
+
+Commit the generated `ui/dist` files in the controller repository with the integration changes. Each controller revision then contains its exact UI version, and Go builds require neither Node nor this frontend checkout. UI changes require another sync and controller rebuild/restart.
+
+The server revalidates the homepage and uses immutable caching for Vite's hashed assets. Missing files return 404; there is no SPA fallback. There are no client-side routes yet; hash routing can be added without changing this serving strategy.
 
 ## Planned sequencing contract
 
